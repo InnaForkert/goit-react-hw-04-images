@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import "./App.css";
 
 import { fetchImages } from "./utils/fetch";
-import { AppInterface, ImageObject } from "./utils/interfaces";
+import { ImageObject } from "./utils/interfaces";
 import { Report } from "notiflix/build/notiflix-report-aio";
 
 import { Searchbar } from "./Searchbar/Searchbar";
@@ -11,60 +11,25 @@ import { Button } from "./Button/Button";
 import { Loader } from "./Loader/Loader";
 import { Modal } from "./Modal/Modal";
 
-class App extends React.Component<{}, AppInterface> {
-  constructor(props: object) {
-    super(props);
+const App: React.FC = () => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [images, setImages] = useState<ImageObject[]>([]);
+  const [fetching, setFetching] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [currentModalImage, setCurrentModalImage] = useState("");
+  const [showLoadMoreBtn, setShowLoadMoreBtn] = useState(false);
 
-    this.state = {
-      searchQuery: "",
-      page: 1,
-      images: [],
-      fetching: false,
-      showModal: false,
-      currentModalImg: "",
-      showLoadMoreBtn: false,
-    };
-
-    this.handleSubmit = this.handleSubmit.bind(this);
-    this.loadMore = this.loadMore.bind(this);
-    this.openModal = this.openModal.bind(this);
-    this.closeModal = this.closeModal.bind(this);
-  }
-
-  handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-
-    const target = e.target as HTMLFormElement;
-    const query = target.elements[1] as HTMLInputElement;
-    const searchQuery = query.value;
-
-    if (searchQuery) {
-      this.setState({
-        searchQuery: searchQuery,
-        page: 1,
-        images: [],
-      });
-    }
-  }
-
-  async componentDidUpdate(_: {}, prevState: AppInterface): Promise<void> {
-    const { searchQuery, page } = this.state;
-
-    if (prevState.searchQuery !== searchQuery || prevState.page !== page) {
-      this.setState({
-        fetching: true,
-      });
-
+  useEffect(() => {
+    const fetchData = async () => {
       try {
         const data = await fetchImages(searchQuery, page);
 
         if (data && data.data.hits.length) {
           const totalHits = data.data.totalHits;
           const fetchedImages: ImageObject[] = data.data.hits;
-          this.setState((prevState) => ({
-            images: [...prevState.images, ...fetchedImages],
-            showLoadMoreBtn: page < Math.ceil(totalHits / 12),
-          }));
+          setImages((prevState) => [...prevState, ...fetchedImages]);
+          setShowLoadMoreBtn(page < Math.ceil(totalHits / 12));
         } else {
           Report.failure(
             "No images found!",
@@ -76,57 +41,56 @@ class App extends React.Component<{}, AppInterface> {
         Report.failure("Opps!", "Something went wrong", "Okay");
         console.log(err);
       } finally {
-        this.setState({
-          fetching: false,
-        });
+        setFetching(false);
       }
-    }
-  }
+    };
+    setFetching(true);
+    fetchData();
+  }, [searchQuery, page]);
 
-  loadMore() {
-    this.setState((prevState) => ({
-      page: prevState.page + 1,
-    }));
-  }
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-  openModal(e: React.MouseEvent) {
+    const target = e.target as HTMLFormElement;
+    const query = target.elements[1] as HTMLInputElement;
+    const searchQuery = query.value;
+
+    setSearchQuery(searchQuery);
+    setPage(1);
+    setImages([]);
+  };
+
+  const loadMore = () => {
+    setPage((prevState) => prevState + 1);
+  };
+
+  const openModal = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
 
     if (target.dataset.largeimg) {
-      this.setState({
-        showModal: true,
-        currentModalImg: target.dataset.largeimg,
-      });
+      setShowModal(true);
+      setCurrentModalImage(target.dataset.largeimg);
     }
-  }
+  };
 
-  closeModal() {
-    this.setState({
-      showModal: false,
-      currentModalImg: "",
-    });
-  }
+  const closeModal = () => {
+    setShowModal(false);
+    setCurrentModalImage("");
+  };
 
-  render() {
-    return (
-      <div className="App">
-        <Searchbar handleSubmit={this.handleSubmit} />
-        {this.state.images.length > 0 ? (
-          <ImageGallery images={this.state.images} openModal={this.openModal} />
-        ) : (
-          <h1>Nothing here yet!</h1>
-        )}
-        {this.state.showLoadMoreBtn && <Button loadMore={this.loadMore} />}
-        <Loader visible={this.state.fetching} />
-        {this.state.showModal && (
-          <Modal
-            src={this.state.currentModalImg}
-            closeModal={this.closeModal}
-          />
-        )}
-      </div>
-    );
-  }
-}
+  return (
+    <div className="App">
+      <Searchbar handleSubmit={handleSubmit} />
+      {images.length > 0 ? (
+        <ImageGallery images={images} openModal={openModal} />
+      ) : (
+        <h1>Nothing here yet!</h1>
+      )}
+      {showLoadMoreBtn && <Button loadMore={loadMore} />}
+      <Loader visible={fetching} />
+      {showModal && <Modal src={currentModalImage} closeModal={closeModal} />}
+    </div>
+  );
+};
 
 export default App;
