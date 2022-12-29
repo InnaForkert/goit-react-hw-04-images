@@ -21,23 +21,23 @@ const App: React.FC = () => {
   const [showLoadMoreBtn, setShowLoadMoreBtn] = useState(false);
 
   useEffect(() => {
-    let ignore = false;
+    if (!searchQuery) {
+      return;
+    }
     const fetchData = async () => {
       try {
         const data = await fetchImages(searchQuery, page);
-        if (!ignore) {
-          if (data && data.data.hits.length) {
-            const totalHits = data.data.totalHits;
-            const fetchedImages: ImageObject[] = data.data.hits;
-            setImages((prevState) => [...prevState, ...fetchedImages]);
-            setShowLoadMoreBtn(page < Math.ceil(totalHits / 12));
-          } else {
-            Report.failure(
-              "No images found!",
-              "Try typing something else",
-              "Okay"
-            );
-          }
+        if (data && data.data.hits.length) {
+          const totalHits = data.data.totalHits;
+          const fetchedImages: ImageObject[] = data.data.hits;
+          setImages((prevState) => [...prevState, ...fetchedImages]);
+          setShowLoadMoreBtn(page < Math.ceil(totalHits / 12));
+        } else {
+          Report.failure(
+            "No images found!",
+            "Try typing something else",
+            "Okay"
+          );
         }
       } catch (err) {
         Report.failure("Opps!", "Something went wrong", "Okay");
@@ -48,9 +48,6 @@ const App: React.FC = () => {
     };
     setFetching(true);
     fetchData();
-    return () => {
-      ignore = true;
-    };
   }, [searchQuery, page]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {

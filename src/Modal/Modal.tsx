@@ -9,17 +9,16 @@ export const Modal = ({
   closeModal: () => void;
 }) => {
   useEffect(() => {
+    const checkKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        closeModal();
+      }
+    };
     document.addEventListener("keydown", checkKey);
     return () => {
       document.removeEventListener("keydown", checkKey);
     };
-  });
-
-  const checkKey = (e: KeyboardEvent) => {
-    if (e.key === "Escape") {
-      closeModal();
-    }
-  };
+  }, [closeModal]);
 
   const checkOverlay = (e: React.MouseEvent<HTMLElement>) => {
     if (e.target === e.currentTarget) {
